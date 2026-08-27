@@ -24,11 +24,17 @@
     $: setItem(thisPath, expanded.toString());
 
     function handleChange() {
-        setting = { ...cSetting };
+        setting = {...cSetting};
         dispatch("change");
     }
 
+    function disable() {
+        enabledSetting.value = false;
+        handleChange();
+    }
+
     function toggleExpanded() {
+        if (nestedSettings.length === 0) return;
         expanded = !expanded;
     }
 
@@ -44,30 +50,34 @@
 </script>
 
 <div class="setting">
-    {#if nestedSettings.length > 0}
-        <!-- svelte-ignore a11y-no-static-element-interactions -->
-        <div class="head expand" class:expanded on:contextmenu|preventDefault={toggleExpanded}>
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div
+            class="head"
+            class:expand={nestedSettings.length > 0}
+            class:expanded={expanded && nestedSettings.length > 0}
+            on:contextmenu|preventDefault={toggleExpanded}
+    >
+        <slot
+                name="control"
+                {disable}
+                label={$spaceSeperatedNames ? convertToSpacedString(cSetting.name) : cSetting.name}
+        >
             <Switch
-                name={$spaceSeperatedNames ? convertToSpacedString(cSetting.name) : cSetting.name}
-                bind:value={enabledSetting.value}
-                on:change={handleChange}
+                    name={$spaceSeperatedNames ? convertToSpacedString(cSetting.name) : cSetting.name}
+                    bind:value={enabledSetting.value}
+                    on:change={handleChange}
             />
-            <ExpandArrow bind:expanded />
-        </div>
-    {:else}
-        <div class="head" class:expanded>
-            <Switch
-                name={$spaceSeperatedNames ? convertToSpacedString(cSetting.name) : cSetting.name}
-                bind:value={enabledSetting.value}
-                on:change={handleChange}
-            />
-        </div>
-    {/if}
+        </slot>
+
+        {#if nestedSettings.length > 0}
+            <ExpandArrow bind:expanded/>
+        {/if}
+    </div>
 
     {#if expanded}
         <div class="nested-settings">
             {#each nestedSettings as setting (setting.name)}
-                <GenericSetting  path={thisPath} bind:setting on:change={handleChange} />
+                <GenericSetting path={thisPath} bind:setting on:change={handleChange}/>
             {/each}
         </div>
     {/if}
@@ -79,16 +89,17 @@
     padding: 6px 0;
   }
 
-  .title {
-    color: var(--clickgui-text-color);
-    font-size: 12px;
-    font-weight: 500;
-  }
-
   .head {
     display: flex;
     justify-content: space-between;
+    min-height: 14px;
     transition: ease margin-bottom 0.4s;
+
+    &.expand {
+      display: grid;
+      grid-template-columns: 1fr max-content;
+      align-items: center;
+    }
 
     &.expanded {
       margin-bottom: 8px;

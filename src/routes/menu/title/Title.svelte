@@ -13,6 +13,8 @@
     import { onDestroy, onMount } from "svelte";
     import { notification } from "../common/header/notification_store";
     import LiquidBounceLogo from "../../../components/LiquidBounceLogo.svelte";
+    import ConfettiBackground from "./ConfettiBackground.svelte";
+    import { isAnniversary } from "../../../util/utils";
 
     let regularButtonsShown = true;
     let clientButtonsShown = false;
@@ -96,6 +98,10 @@
 </script>
 
 <div class="title-screen" on:mousemove={onMouseMove}>
+    {#if isAnniversary()}
+        <ConfettiBackground/>
+    {/if}
+
 
     <div class="bg-parallax"
          style="transform: translate({bgX}px, {bgY}px) scale(1.08);">
@@ -182,6 +188,7 @@
         position: fixed;
         inset: 0;
         overflow: hidden;
+        isolation: isolate;
     }
 
     .bg-parallax {

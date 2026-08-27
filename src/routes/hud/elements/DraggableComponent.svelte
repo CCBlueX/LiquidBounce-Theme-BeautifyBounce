@@ -1,264 +1,574 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
-    import { type Alignment, HorizontalAlignment, VerticalAlignment } from "../../../integration/types";
+    import {getContext, onMount, tick} from "svelte";
+
+    import type {KeyboardKeyEvent, ScaleFactorChangeEvent} from "../../../integration/events";
+    import {bringComponentToFront, getGameWindow, setComponentAlignment} from "../../../integration/rest";
+    import {type Alignment, HorizontalAlignment, VerticalAlignment} from "../../../integration/types.js";
+    import {listen} from "../../../integration/ws";
+    import ComponentSettings from "../../clickgui/tabs/hud_editor/ComponentSettings.svelte";
+    import {
+        type HorizontalAnchorZone,
+        HUD_EDITOR_ELEMENTS_CONTEXT,
+        HUD_EDITOR_GRID_SIZE,
+        HUD_EDITOR_MAGNET_THRESHOLD,
+        type HudEditorDragState,
+        type VerticalAnchorZone
+    } from "../../clickgui/tabs/hud_editor/constants";
+    import {fade, type TransitionConfig} from "svelte/transition";
 
     export let alignment: Alignment;
-    export let editMode = false;
-    export let zoom = 100;
+    export let componentId: string;
+    export let componentName: string;
+    export let inEditor: boolean;
+    export let onDragStateChange: ((state: HudEditorDragState) => void) | undefined = undefined;
+    export let magneticallyReferenced = false;
+    export let width: number | undefined = undefined;
+    export let height: number | undefined = undefined;
+    export let zIndex = 0;
 
-    const dispatch = createEventDispatcher();
+    let scaleFactor = 2;
+    let element: HTMLElement | undefined;
+    let isDragging = false;
+    let isGridIgnored = false;
+    let pointerCenterOffsetX = 0;
+    let pointerCenterOffsetY = 0;
+    let horizontalZone: HorizontalAnchorZone = "left";
+    let verticalZone: VerticalAnchorZone = "upper";
+    let verticalGuide: number | undefined;
+    let horizontalGuide: number | undefined;
+    let horizontalTargetId: string | undefined;
+    let verticalTargetId: string | undefined;
+    let displayedZIndex = zIndex;
 
-    let currentOffsetX = alignment.horizontalOffset;
-    let currentOffsetY = alignment.verticalOffset;
-    let dragging = false;
-    let startX = 0;
-    let startY = 0;
-    let startOffsetX = 0;
-    let startOffsetY = 0;
+    let displayPosition = {
+        x: 0,
+        y: 0
+    };
+    let positionOnTop = false;
 
-    let containerWidth = 0;
-    let containerHeight = 0;
+    const POSITION_OVERLAY_OFFSET = 19;
 
-    let snapFractionX: number | null = null;
-    let snapFractionY: number | null = null;
+    const editorElements = getContext<Map<string, HTMLElement>>(HUD_EDITOR_ELEMENTS_CONTEXT);
 
-    const SNAP_THRESHOLD = 5;
+    $: styleString = generateStyleString(alignment);
+    $: displayedZIndex = zIndex;
+    $: sizeStyleString = (width !== undefined && height !== undefined)
+        ? `width: ${width}px; height: ${height}px;`
+        : "";
 
-    $: if (!dragging && !editMode) {
-        currentOffsetX = alignment.horizontalOffset;
-        currentOffsetY = alignment.verticalOffset;
+    function clamp(value: number, min: number, max: number): number {
+        return Math.max(min, Math.min(value, max));
     }
 
-    $: styleString = generateStyleString({
-        ...alignment,
-        horizontalOffset: currentOffsetX,
-        verticalOffset: currentOffsetY
-    });
+    function toHudCoordinate(clientCoordinate: number): number {
+        return clientCoordinate * (2 / scaleFactor);
+    }
 
-    function generateStyleString(align: Alignment): string {
-        let style = "position: fixed;";
+    function getHudWidth(): number {
+        return toHudCoordinate(window.innerWidth);
+    }
 
-        switch (align.horizontalAlignment) {
-            case HorizontalAlignment.LEFT: style += `left: ${align.horizontalOffset}px;`; break;
-            case HorizontalAlignment.RIGHT: style += `right: ${align.horizontalOffset}px;`; break;
+    function getHudHeight(): number {
+        return toHudCoordinate(window.innerHeight);
+    }
+
+    function getElementWidth(): number {
+        return toHudCoordinate(element?.getBoundingClientRect().width ?? 0);
+    }
+
+    function getElementHeight(): number {
+        return toHudCoordinate(element?.getBoundingClientRect().height ?? 0);
+    }
+
+    function getHorizontalCenter(): number {
+        const elementWidth = getElementWidth();
+        const hudWidth = getHudWidth();
+
+        switch (alignment.horizontalAlignment) {
+            case HorizontalAlignment.LEFT:
+                return alignment.horizontalOffset + elementWidth / 2;
+            case HorizontalAlignment.RIGHT:
+                return hudWidth - alignment.horizontalOffset - elementWidth / 2;
             case HorizontalAlignment.CENTER:
-            case HorizontalAlignment.CENTER_TRANSLATED: style += `left: calc(50% + ${align.horizontalOffset}px);`; break;
+                return hudWidth / 2 + alignment.horizontalOffset + elementWidth / 2;
+            case HorizontalAlignment.CENTER_TRANSLATED:
+                return hudWidth / 2 + alignment.horizontalOffset;
         }
+    }
 
-        switch (align.verticalAlignment) {
-            case VerticalAlignment.TOP: style += `top: ${align.verticalOffset}px;`; break;
-            case VerticalAlignment.BOTTOM: style += `bottom: ${align.verticalOffset}px;`; break;
+    function getVerticalCenter(): number {
+        const elementHeight = getElementHeight();
+        const hudHeight = getHudHeight();
+
+        switch (alignment.verticalAlignment) {
+            case VerticalAlignment.TOP:
+                return alignment.verticalOffset + elementHeight / 2;
+            case VerticalAlignment.BOTTOM:
+                return hudHeight - alignment.verticalOffset - elementHeight / 2;
             case VerticalAlignment.CENTER:
-            case VerticalAlignment.CENTER_TRANSLATED: style += `top: calc(50% + ${align.verticalOffset}px);`; break;
+                return hudHeight / 2 + alignment.verticalOffset + elementHeight / 2;
+            case VerticalAlignment.CENTER_TRANSLATED:
+                return hudHeight / 2 + alignment.verticalOffset;
         }
-
-        style += "transform: translate(";
-        style += align.horizontalAlignment === HorizontalAlignment.CENTER_TRANSLATED ? "-50%," : "0,";
-        style += align.verticalAlignment === VerticalAlignment.CENTER_TRANSLATED ? "-50%);" : "0);";
-
-        return style;
     }
 
-    function getBaseAbsoluteCenter(align: Alignment, offX: number, offY: number) {
-        const sw = window.innerWidth / (zoom / 100);
-        const sh = window.innerHeight / (zoom / 100);
-        let cx = 0; let cy = 0;
+    function getHorizontalZone(cursorX: number): HorizontalAnchorZone {
+        const hudWidth = getHudWidth();
 
-        switch (align.horizontalAlignment) {
-            case HorizontalAlignment.LEFT: cx = offX + containerWidth / 2; break;
-            case HorizontalAlignment.RIGHT: cx = sw - offX - containerWidth / 2; break;
-            case HorizontalAlignment.CENTER: cx = (sw / 2) + offX + containerWidth / 2; break;
-            case HorizontalAlignment.CENTER_TRANSLATED: cx = (sw / 2) + offX; break;
+        if (cursorX < hudWidth / 3) {
+            return "left";
         }
-
-        switch (align.verticalAlignment) {
-            case VerticalAlignment.TOP: cy = offY + containerHeight / 2; break;
-            case VerticalAlignment.BOTTOM: cy = sh - offY - containerHeight / 2; break;
-            case VerticalAlignment.CENTER: cy = (sh / 2) + offY + containerHeight / 2; break;
-            case VerticalAlignment.CENTER_TRANSLATED: cy = (sh / 2) + offY; break;
+        if (cursorX > hudWidth * 2 / 3) {
+            return "right";
         }
-
-        return { cx, cy };
+        return "center";
     }
 
-    function setOffsetFromAbsoluteCenter(align: Alignment, cx: number, cy: number) {
-        const sw = window.innerWidth / (zoom / 100);
-        const sh = window.innerHeight / (zoom / 100);
-        let offX = 0; let offY = 0;
+    function getVerticalZone(cursorY: number): VerticalAnchorZone {
+        const hudHeight = getHudHeight();
 
-        switch (align.horizontalAlignment) {
-            case HorizontalAlignment.LEFT: offX = cx - containerWidth / 2; break;
-            case HorizontalAlignment.RIGHT: offX = sw - cx - containerWidth / 2; break;
-            case HorizontalAlignment.CENTER: offX = cx - (sw / 2) - containerWidth / 2; break;
-            case HorizontalAlignment.CENTER_TRANSLATED: offX = cx - (sw / 2); break;
+        if (cursorY < hudHeight / 3) {
+            return "upper";
         }
-
-        switch (align.verticalAlignment) {
-            case VerticalAlignment.TOP: offY = cy - containerHeight / 2; break;
-            case VerticalAlignment.BOTTOM: offY = sh - cy - containerHeight / 2; break;
-            case VerticalAlignment.CENTER: offY = cy - (sh / 2) - containerHeight / 2; break;
-            case VerticalAlignment.CENTER_TRANSLATED: offY = cy - (sh / 2); break;
+        if (cursorY > hudHeight * 2 / 3) {
+            return "lower";
         }
-
-        return { offX, offY };
+        return "center";
     }
 
-    function onMouseDown(e: MouseEvent) {
-        if (!editMode || e.button !== 0) return;
-        dragging = true;
-        startX = e.clientX;
-        startY = e.clientY;
-        startOffsetX = currentOffsetX;
-        startOffsetY = currentOffsetY;
-        dispatch("dragstart");
+    function getHorizontalAlignment(zone: HorizontalAnchorZone): HorizontalAlignment {
+        switch (zone) {
+            case "left":
+                return HorizontalAlignment.LEFT;
+            case "center":
+                return HorizontalAlignment.CENTER_TRANSLATED;
+            case "right":
+                return HorizontalAlignment.RIGHT;
+        }
     }
 
-    function onMouseMove(e: MouseEvent) {
-        if (!dragging) return;
-
-        const scale = zoom / 100;
-        let dx = (e.clientX - startX) / scale;
-        let dy = (e.clientY - startY) / scale;
-
-        if (alignment.horizontalAlignment === HorizontalAlignment.RIGHT) dx = -dx;
-        if (alignment.verticalAlignment === VerticalAlignment.BOTTOM) dy = -dy;
-
-        let rawOffsetX = startOffsetX + dx;
-        let rawOffsetY = startOffsetY + dy;
-
-        const sw = window.innerWidth / scale;
-        const sh = window.innerHeight / scale;
-
-        let { cx, cy } = getBaseAbsoluteCenter(alignment, rawOffsetX, rawOffsetY);
-
-        snapFractionX = null;
-        snapFractionY = null;
-        let snappedX = false;
-        let snappedY = false;
-
-        if (!e.shiftKey) {
-            if (Math.abs(cx - sw / 2) <= SNAP_THRESHOLD) {
-                cx = sw / 2; snapFractionX = 50; snappedX = true;
-            }
-            if (Math.abs(cy - sh / 2) <= SNAP_THRESHOLD) {
-                cy = sh / 2; snapFractionY = 50; snappedY = true;
-            }
+    function getVerticalAlignment(zone: VerticalAnchorZone): VerticalAlignment {
+        switch (zone) {
+            case "upper":
+                return VerticalAlignment.TOP;
+            case "center":
+                return VerticalAlignment.CENTER_TRANSLATED;
+            case "lower":
+                return VerticalAlignment.BOTTOM;
         }
-
-        let elLeft = cx - containerWidth / 2;
-        let elRight = cx + containerWidth / 2;
-        let elTop = cy - containerHeight / 2;
-        let elBottom = cy + containerHeight / 2;
-
-        if (elLeft <= 0) {
-            cx = containerWidth / 2;
-            if (!snappedX && !e.shiftKey) snapFractionX = 0;
-        } else if (elRight >= sw) {
-            cx = sw - containerWidth / 2;
-            if (!snappedX && !e.shiftKey) snapFractionX = 100;
-        }
-
-        if (elTop <= 0) {
-            cy = containerHeight / 2;
-            if (!snappedY && !e.shiftKey) snapFractionY = 0;
-        } else if (elBottom >= sh) {
-            cy = sh - containerHeight / 2;
-            if (!snappedY && !e.shiftKey) snapFractionY = 100;
-        }
-
-        const finalOffsets = setOffsetFromAbsoluteCenter(alignment, cx, cy);
-        currentOffsetX = finalOffsets.offX;
-        currentOffsetY = finalOffsets.offY;
     }
 
-    function onMouseUp() {
-        if (!dragging) return;
-        dragging = false;
-        snapFractionX = null;
-        snapFractionY = null;
-        
-        dispatch("updateAlignment", {
-            horizontalAlignment: alignment.horizontalAlignment,
-            verticalAlignment: alignment.verticalAlignment,
-            horizontalOffset: currentOffsetX,
-            verticalOffset: currentOffsetY
+    function getHorizontalOffset(center: number, anchor: HorizontalAlignment): number {
+        const elementWidth = getElementWidth();
+        const hudWidth = getHudWidth();
+
+        switch (anchor) {
+            case HorizontalAlignment.LEFT:
+                return center - elementWidth / 2;
+            case HorizontalAlignment.RIGHT:
+                return hudWidth - center - elementWidth / 2;
+            case HorizontalAlignment.CENTER:
+                return center - hudWidth / 2 - elementWidth / 2;
+            case HorizontalAlignment.CENTER_TRANSLATED:
+                return center - hudWidth / 2;
+        }
+    }
+
+    function getVerticalOffset(center: number, anchor: VerticalAlignment): number {
+        const elementHeight = getElementHeight();
+        const hudHeight = getHudHeight();
+
+        switch (anchor) {
+            case VerticalAlignment.TOP:
+                return center - elementHeight / 2;
+            case VerticalAlignment.BOTTOM:
+                return hudHeight - center - elementHeight / 2;
+            case VerticalAlignment.CENTER:
+                return center - hudHeight / 2 - elementHeight / 2;
+            case VerticalAlignment.CENTER_TRANSLATED:
+                return center - hudHeight / 2;
+        }
+    }
+
+    interface MagneticSnap {
+        center: number;
+        guide: number;
+        targetId?: string;
+    }
+
+    function emitDragState(dragging: boolean): void {
+        onDragStateChange?.({
+            dragging,
+            horizontalZone,
+            verticalZone,
+            verticalGuide,
+            horizontalGuide,
+            magneticTargetIds: [...new Set([horizontalTargetId, verticalTargetId].filter(id => id !== undefined))],
         });
     }
 
-    function onContextMenu(e: MouseEvent) {
-        if (!editMode) return;
-        e.preventDefault(); 
-        e.stopPropagation();
-        dispatch("rightclick", e);
+    function updateDragState(
+        nextHorizontalZone: HorizontalAnchorZone,
+        nextVerticalZone: VerticalAnchorZone,
+        nextVerticalGuide?: number,
+        nextHorizontalGuide?: number,
+        nextHorizontalTargetId?: string,
+        nextVerticalTargetId?: string,
+    ): void {
+        if (horizontalZone === nextHorizontalZone &&
+            verticalZone === nextVerticalZone &&
+            verticalGuide === nextVerticalGuide &&
+            horizontalGuide === nextHorizontalGuide &&
+            horizontalTargetId === nextHorizontalTargetId &&
+            verticalTargetId === nextVerticalTargetId) {
+            return;
+        }
+
+        horizontalZone = nextHorizontalZone;
+        verticalZone = nextVerticalZone;
+        verticalGuide = nextVerticalGuide;
+        horizontalGuide = nextHorizontalGuide;
+        horizontalTargetId = nextHorizontalTargetId;
+        verticalTargetId = nextVerticalTargetId;
+        emitDragState(true);
     }
+
+    function getElementPoints(target: HTMLElement, horizontal: boolean): number[] {
+        const bounds = target.getBoundingClientRect();
+        const start = toHudCoordinate(horizontal ? bounds.left : bounds.top);
+        const size = toHudCoordinate(horizontal ? bounds.width : bounds.height);
+
+        return [start, start + size / 2, start + size];
+    }
+
+    function findMagneticSnap(center: number, size: number, horizontal: boolean): MagneticSnap | undefined {
+        if (isGridIgnored) {
+            return undefined;
+        }
+
+        const draggedPoints = [center - size / 2, center, center + size / 2];
+        const viewportSize = horizontal ? getHudWidth() : getHudHeight();
+        const viewportCenter = viewportSize / 2;
+        const viewportCenterDistance = viewportCenter - center;
+        let closestSnap: MagneticSnap | undefined = Math.abs(viewportCenterDistance) <= HUD_EDITOR_MAGNET_THRESHOLD
+            ? {center: viewportCenter, guide: viewportCenter}
+            : undefined;
+        let closestDistance = closestSnap
+            ? Math.abs(viewportCenterDistance)
+            : HUD_EDITOR_MAGNET_THRESHOLD + 1;
+
+        for (const [id, target] of editorElements) {
+            if (id === componentId) {
+                continue;
+            }
+
+            for (const targetPoint of getElementPoints(target, horizontal)) {
+                for (const draggedPoint of draggedPoints) {
+                    const distance = targetPoint - draggedPoint;
+                    const snappedCenter = center + distance;
+
+                    if (Math.abs(distance) > HUD_EDITOR_MAGNET_THRESHOLD ||
+                        Math.abs(distance) >= closestDistance ||
+                        snappedCenter - size / 2 < 0 ||
+                        snappedCenter + size / 2 > viewportSize) {
+                        continue;
+                    }
+
+                    closestDistance = Math.abs(distance);
+                    closestSnap = {center: snappedCenter, guide: targetPoint, targetId: id};
+                }
+            }
+        }
+
+        return closestSnap;
+    }
+
+    function onMouseDown(event: MouseEvent): void {
+        if (inEditor && event.button === 0) {
+            updateZIndex();
+        }
+
+        if (event.button !== 0 && event.button !== 1) {
+            return;
+        }
+
+        isDragging = true;
+        const horizontalCenter = getHorizontalCenter();
+        const verticalCenter = getVerticalCenter();
+        const cursorX = toHudCoordinate(event.clientX);
+        const cursorY = toHudCoordinate(event.clientY);
+
+        pointerCenterOffsetX = horizontalCenter - cursorX;
+        pointerCenterOffsetY = verticalCenter - cursorY;
+        horizontalZone = getHorizontalZone(cursorX);
+        verticalZone = getVerticalZone(cursorY);
+        verticalGuide = undefined;
+        horizontalGuide = undefined;
+        horizontalTargetId = undefined;
+        verticalTargetId = undefined;
+        updateDisplayedPosition();
+        emitDragState(true);
+    }
+
+    async function updateZIndex(): Promise<void> {
+        displayedZIndex = await bringComponentToFront(componentId);
+    }
+
+    async function updateDisplayedPosition(): Promise<void> {
+        await tick();
+
+        if (!element) {
+            return;
+        }
+
+        const bounds = element.getBoundingClientRect();
+        displayPosition = {
+            x: Math.round(bounds.x),
+            y: Math.round(bounds.y)
+        };
+        positionOnTop = bounds.top + bounds.height / 2 >= window.innerHeight / 2;
+    }
+
+    function onMouseMove(event: MouseEvent): void {
+        if (!isDragging) {
+            return;
+        }
+
+        const cursorX = toHudCoordinate(event.clientX);
+        const cursorY = toHudCoordinate(event.clientY);
+        const horizontalCenter = cursorX + pointerCenterOffsetX;
+        const verticalCenter = cursorY + pointerCenterOffsetY;
+        const nextHorizontalZone = getHorizontalZone(cursorX);
+        const nextVerticalZone = getVerticalZone(cursorY);
+        const elementWidth = getElementWidth();
+        const elementHeight = getElementHeight();
+        const horizontalSnap = findMagneticSnap(horizontalCenter, elementWidth, true);
+        const verticalSnap = findMagneticSnap(verticalCenter, elementHeight, false);
+
+        alignment.horizontalAlignment = getHorizontalAlignment(nextHorizontalZone);
+        alignment.verticalAlignment = getVerticalAlignment(nextVerticalZone);
+
+        const horizontalOffset = getHorizontalOffset(
+            horizontalSnap?.center ?? horizontalCenter,
+            alignment.horizontalAlignment
+        );
+        const verticalOffset = getVerticalOffset(
+            verticalSnap?.center ?? verticalCenter,
+            alignment.verticalAlignment
+        );
+
+        alignment.horizontalOffset = clampHorizontalOffset(
+            horizontalSnap ? horizontalOffset : snapToGrid(horizontalOffset)
+        );
+        alignment.verticalOffset = clampVerticalOffset(
+            verticalSnap ? verticalOffset : snapToGrid(verticalOffset)
+        );
+
+        updateDragState(
+            nextHorizontalZone,
+            nextVerticalZone,
+            horizontalSnap?.guide,
+            verticalSnap?.guide,
+            horizontalSnap?.targetId,
+            verticalSnap?.targetId,
+        );
+        updateDisplayedPosition();
+    }
+
+    function clampHorizontalOffset(offset: number): number {
+        const elementWidth = getElementWidth();
+        const hudWidth = getHudWidth();
+
+        switch (alignment.horizontalAlignment) {
+            case HorizontalAlignment.CENTER_TRANSLATED:
+                return clamp(
+                    offset,
+                    -hudWidth / 2 + elementWidth / 2,
+                    hudWidth / 2 - elementWidth / 2
+                );
+            case HorizontalAlignment.CENTER:
+                return clamp(
+                    offset,
+                    -hudWidth / 2,
+                    hudWidth / 2 - elementWidth
+                );
+            case HorizontalAlignment.LEFT:
+            case HorizontalAlignment.RIGHT:
+                return clamp(offset, 0, hudWidth - elementWidth);
+        }
+    }
+
+    function clampVerticalOffset(offset: number): number {
+        const elementHeight = getElementHeight();
+        const hudHeight = getHudHeight();
+
+        switch (alignment.verticalAlignment) {
+            case VerticalAlignment.CENTER_TRANSLATED:
+                return clamp(
+                    offset,
+                    -hudHeight / 2 + elementHeight / 2,
+                    hudHeight / 2 - elementHeight / 2
+                );
+            case VerticalAlignment.CENTER:
+                return clamp(
+                    offset,
+                    -hudHeight / 2,
+                    hudHeight / 2 - elementHeight
+                );
+            case VerticalAlignment.TOP:
+            case VerticalAlignment.BOTTOM:
+                return clamp(offset, 0, hudHeight - elementHeight);
+        }
+    }
+
+    function snapToGrid(value: number): number {
+        return isGridIgnored ? value : Math.round(value / HUD_EDITOR_GRID_SIZE) * HUD_EDITOR_GRID_SIZE;
+    }
+
+    function onMouseUp(): void {
+        if (!isDragging) {
+            return;
+        }
+
+        isDragging = false;
+        verticalGuide = undefined;
+        horizontalGuide = undefined;
+        horizontalTargetId = undefined;
+        verticalTargetId = undefined;
+        emitDragState(false);
+        setComponentAlignment(componentId, alignment);
+    }
+
+    function generateStyleString(alignment: Alignment): string {
+        const translateX = alignment.horizontalAlignment === HorizontalAlignment.CENTER_TRANSLATED ? "-50%" : "0";
+        const translateY = alignment.verticalAlignment === VerticalAlignment.CENTER_TRANSLATED ? "-50%" : "0";
+
+        return [
+            "position: fixed;",
+            getHorizontalStyle(alignment),
+            getVerticalStyle(alignment),
+            `transform: translate(${translateX}, ${translateY});`
+        ].join(" ");
+    }
+
+    function getHorizontalStyle(alignment: Alignment): string {
+        switch (alignment.horizontalAlignment) {
+            case HorizontalAlignment.LEFT:
+                return `left: ${alignment.horizontalOffset}px;`;
+            case HorizontalAlignment.RIGHT:
+                return `right: ${alignment.horizontalOffset}px;`;
+            case HorizontalAlignment.CENTER:
+            case HorizontalAlignment.CENTER_TRANSLATED:
+                return `left: calc(50% + ${alignment.horizontalOffset}px);`;
+        }
+    }
+
+    function getVerticalStyle(alignment: Alignment): string {
+        switch (alignment.verticalAlignment) {
+            case VerticalAlignment.TOP:
+                return `top: ${alignment.verticalOffset}px;`;
+            case VerticalAlignment.BOTTOM:
+                return `bottom: ${alignment.verticalOffset}px;`;
+            case VerticalAlignment.CENTER:
+            case VerticalAlignment.CENTER_TRANSLATED:
+                return `top: calc(50% + ${alignment.verticalOffset}px);`;
+        }
+    }
+
+    function editorFade(node: Element): TransitionConfig {
+        return fade(node, {
+            duration: inEditor ? 200 : 0
+        });
+    }
+
+    listen("keyboardKey", (e: KeyboardKeyEvent) => {
+        if (e.key === "key.keyboard.left.shift") {
+            isGridIgnored = e.action === 1;
+        }
+    });
+
+    onMount(() => {
+        if (!inEditor || !element) {
+            return;
+        }
+
+        editorElements.set(componentId, element);
+        return () => editorElements.delete(componentId);
+    });
+
+    onMount(async () => {
+        const gameWindow = await getGameWindow();
+        scaleFactor = gameWindow.scaleFactor;
+    });
+
+    listen("scaleFactorChange", (event: ScaleFactorChangeEvent) => {
+        scaleFactor = event.scaleFactor;
+    });
 </script>
 
-<svelte:window on:mousemove={onMouseMove} on:mouseup={onMouseUp} />
+<svelte:window
+        on:mouseup={onMouseUp}
+        on:mousemove={onMouseMove}
+/>
 
-{#if snapFractionX !== null}
-    <div class="snap-line vertical" style="left: {snapFractionX}%;"></div>
-{/if}
-{#if snapFractionY !== null}
-    <div class="snap-line horizontal" style="top: {snapFractionY}%;"></div>
-{/if}
-
-<!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="draggable-element" class:editing={editMode} style={styleString} on:mousedown={onMouseDown} on:contextmenu={onContextMenu}>
-    <div class="contained-element" bind:clientWidth={containerWidth} bind:clientHeight={containerHeight}>
+<div class="draggable-element" style="{styleString} z-index: {displayedZIndex};" bind:this={element}
+     transition:editorFade|global>
+    <!-- svelte-ignore a11y-no-static-element-interactions -->
+    <div
+            class="contained-element"
+            style={sizeStyleString}
+            class:editor-mode={inEditor}
+            class:magnetically-referenced={inEditor && magneticallyReferenced}
+            on:mousedown={onMouseDown}
+    >
         <slot/>
     </div>
-    {#if editMode}
-        <div class="edit-overlay"></div>
+    {#if isDragging}
+        <div class="position" class:top={positionOnTop} transition:fade={{duration: 100}}>
+            {displayPosition.x} &#215; {displayPosition.y}
+        </div>
+    {/if}
+    {#if inEditor}
+        <ComponentSettings
+                name={componentName}
+                id={componentId}
+                {alignment}
+                overlayOffset={isDragging ? POSITION_OVERLAY_OFFSET : 0}
+        />
     {/if}
 </div>
 
-<style lang="scss">
-  .draggable-element {
-    position: relative;
-  }
+<style>
+    .contained-element {
+        min-width: 50px;
+        min-height: 50px;
+    }
 
-  .contained-element {
-    min-width: 50px;
-    min-height: 50px;
-  }
+    .editor-mode {
+        outline: solid 1px var(--clickgui-hud-editor-draggable-element-outline-color);
+        background-color: var(--clickgui-hud-editor-draggable-element-background-color);
+        transition: background-color 100ms ease;
+    }
 
-  .editing {
-    cursor: move;
-    z-index: 999999;
-  }
+    .magnetically-referenced {
+        background-color: var(--clickgui-hud-editor-magnetic-reference-background-color);
+    }
 
-  .edit-overlay {
-    position: absolute;
-    inset: -4px;
-    border: 2px dashed rgba(255, 255, 255, 0.5);
-    pointer-events: auto;
-    transition: all 0.4s ease;
-  }
+    .position {
+        position: absolute;
+        top: calc(100% + 5px);
+        left: 0;
+        width: max-content;
+        height: 14px;
+        color: var(--clickgui-text-dimmed-color);
+        font-size: 12px;
+        text-wrap: nowrap;
+        outline: solid 1px var(--clickgui-hud-editor-draggable-element-position-outline-color);
+        background-color: var(--clickgui-hud-editor-draggable-element-position-background-color);
+    }
 
-  .editing:hover .edit-overlay {
-    border: 2px solid var(--accent-color);
-    background: color-mix(in srgb, var(--accent-color) 20%, transparent);
-  }
-
-  .snap-line {
-    position: fixed;
-    z-index: 9999999;
-    pointer-events: none;
-    background-color: var(--accent-color);
-    box-shadow: 0 0 6px var(--accent-color);
-  }
-
-  .snap-line.vertical {
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    transform: translateX(-50%);
-  }
-
-  .snap-line.horizontal {
-    left: 0;
-    right: 0;
-    height: 2px;
-    transform: translateY(-50%);
-  }
+    .position.top {
+        top: auto;
+        bottom: calc(100% + 5px);
+    }
 </style>

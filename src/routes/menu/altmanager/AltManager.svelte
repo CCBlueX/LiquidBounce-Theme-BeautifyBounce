@@ -12,7 +12,6 @@
     import SwitchSetting from "../common/setting/SwitchSetting.svelte";
     import OptionBar from "../common/optionbar/OptionBar.svelte";
     import MenuListItem from "../common/menulist/MenuListItem.svelte";
-    import Menu from "../common/Menu.svelte";
     import ButtonContainer from "../common/buttons/ButtonContainer.svelte";
     import MenuListItemTag from "../common/menulist/MenuListItemTag.svelte";
     import MenuList from "../common/menulist/MenuList.svelte";
@@ -116,94 +115,73 @@
     });
 </script>
 
-<div class="bg-image"></div>
-<div class="bg-overlay"></div>
-
 <DirectLoginModal bind:visible={directLoginModalVisible}/>
+
 <AddAccountModal bind:visible={addAccountModalVisible}/>
-<Menu>
-    <div class="compact-layout">
-        <OptionBar>
-            <Search on:search={handleSearch}/>
-        </OptionBar>
 
-        <MenuList sortable={accounts.length === renderedAccounts.length} elementCount={accounts.length}
-                on:sort={handleAccountSort}>
-            {#key accounts}
-                {#each renderedAccounts as account}
-                    <MenuListItem
-                            image={account.avatar}
-                            title={account.username}
-                            favorite={account.favorite}
-                            on:dblclick={() => loginToAccount(account.id)}>
-                        <svelte:fragment slot="subtitle">
-                            <pre class="uuid">{account.uuid}</pre>
-                        </svelte:fragment>
+<div class="compact-layout">
+    <OptionBar>
+        <Search on:search={handleSearch}/>
+    </OptionBar>
 
-                        <svelte:fragment slot="tag">
-                            <MenuListItemTag text={account.type}/>
-                        </svelte:fragment>
+    <MenuList sortable={accounts.length === renderedAccounts.length} elementCount={accounts.length}
+              on:sort={handleAccountSort}>
+        {#key accounts}
+            {#each renderedAccounts as account}
+                <MenuListItem
+                        image={account.avatar}
+                        title={account.username}
+                        favorite={account.favorite}
+                        on:dblclick={() => loginToAccount(account.id)}>
+                    <svelte:fragment slot="subtitle">
+                        <pre class="uuid">{account.uuid}</pre>
+                    </svelte:fragment>
 
-                        <svelte:fragment slot="active-visible">
-                            <MenuListItemButton title="Delete" icon="trash" on:click={() => removeAccount(account.id)}/>
-                            <MenuListItemButton title="Favorite" icon={account.favorite ? "favorite-filled" : "favorite" }
-                                                on:click={() => toggleFavorite(account.id, !account.favorite)}/>
-                        </svelte:fragment>
+                    <svelte:fragment slot="tag">
+                        <MenuListItemTag text={account.type}/>
+                    </svelte:fragment>
 
-                        <svelte:fragment slot="always-visible">
-                            <MenuListItemButton title="Login" icon="play" on:click={() => loginToAccount(account.id)}/>
-                        </svelte:fragment>
-                    </MenuListItem>
-                {/each}
-            {/key}
-        </MenuList>
-    </div>
+                    <svelte:fragment slot="active-visible">
+                        <MenuListItemButton title="Delete" icon="trash" on:click={() => removeAccount(account.id)}/>
+                        <MenuListItemButton title="Favorite" icon={account.favorite ? "favorite-filled" : "favorite" }
+                                            on:click={() => toggleFavorite(account.id, !account.favorite)}/>
+                    </svelte:fragment>
 
-    <BottomButtonWrapper>
-        <ButtonContainer>
-            <IconTextButton icon="icon-plus-circle.svg" title="Add" on:click={() => addAccountModalVisible = true}/>
-            <IconTextButton icon="icon-plane.svg" title="Direct" on:click={() => directLoginModalVisible = true}/>
-            <IconTextButton icon="icon-random.svg" disabled={renderedAccounts.length === 0} title="Random"
-                            on:click={loginToRandomAccount}/>
-            <IconTextButton icon="icon-refresh.svg" title="Restore" on:click={restoreSession}/>
-        </ButtonContainer>
+                    <svelte:fragment slot="always-visible">
+                        <MenuListItemButton title="Login" icon="play" on:click={() => loginToAccount(account.id)}/>
+                    </svelte:fragment>
+                </MenuListItem>
+            {/each}
+        {/key}
+    </MenuList>
+</div>
 
-        <ButtonContainer>
-            <IconTextButton icon="icon-back.svg" title="Back" on:click={() => deleteScreen()}/>
-        </ButtonContainer>
-    </BottomButtonWrapper>
-</Menu>
+<BottomButtonWrapper>
+    <ButtonContainer>
+        <IconTextButton icon="icon-plus-circle.svg" title="Add" on:click={() => addAccountModalVisible = true}/>
+        <IconTextButton icon="icon-plane.svg" title="Direct" on:click={() => directLoginModalVisible = true}/>
+        <IconTextButton icon="icon-random.svg" disabled={renderedAccounts.length === 0} title="Random"
+                        on:click={loginToRandomAccount}/>
+        <IconTextButton icon="icon-refresh.svg" title="Restore" on:click={restoreSession}/>
+    </ButtonContainer>
+
+    <ButtonContainer>
+        <IconTextButton icon="icon-back.svg" title="Back" on:click={() => deleteScreen()}/>
+    </ButtonContainer>
+</BottomButtonWrapper>
 
 <style lang="scss">
+  .compact-layout {
+    max-width: 1000px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+
   .uuid {
     font-family: monospace;
-  }
-
-    .compact-layout {
-        max-width: 1000px;
-        width: 100%;
-        margin: 0 auto;
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        min-height: 0;
-    }
-
-  .bg-image {
-      position: absolute;
-      inset: 0;
-      background-image: url('backgrounds/background.png');
-      background-size: cover;
-      background-position: center;
-      background-repeat: no-repeat;
-      z-index: -2;
-  }
-
-  .bg-overlay {
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(circle at center, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.35) 100%);
-      backdrop-filter: blur(4px);
-      z-index: -1;
   }
 </style>

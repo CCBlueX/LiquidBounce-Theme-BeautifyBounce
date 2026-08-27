@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {createEventDispatcher} from "svelte";
+    import {createEventDispatcher, tick} from "svelte";
     import {slide} from "svelte/transition";
     import {convertToSpacedString, spaceSeperatedNames} from "../../../../theme/theme_config";
 
@@ -11,6 +11,15 @@
 
     let expanded = false;
     let dropdownHead: HTMLElement;
+    let optionsStyle = "";
+
+    function portal(node: HTMLElement) {
+        document.body.appendChild(node);
+
+        return {
+            destroy: () => node.remove()
+        };
+    }
 
     function windowClickHide(e: MouseEvent) {
         if (dropdownHead && !dropdownHead.contains(e.target as Node)) {
@@ -23,9 +32,42 @@
         expanded = false;
         dispatch("change");
     }
+
+    async function toggleExpanded() {
+        expanded = !expanded;
+        if (!expanded) {
+            return;
+        }
+
+        await tick();
+        updateOptionsPosition();
+    }
+
+    function updateOptionsPosition() {
+        if (!expanded) {
+            return;
+        }
+
+        const bounds = dropdownHead.getBoundingClientRect();
+        const scale = bounds.width / dropdownHead.offsetWidth;
+        optionsStyle = [
+            `left: ${bounds.left}px`,
+            `top: ${bounds.bottom}px`,
+            `width: ${dropdownHead.offsetWidth}px`,
+            `--dropdown-scale: ${scale}`
+        ].join(";");
+    }
+
+    function closeDropdown() {
+        expanded = false;
+    }
 </script>
 
-<svelte:window on:click={windowClickHide}/>
+<svelte:window
+        on:click={windowClickHide}
+        on:resize={updateOptionsPosition}
+        on:scroll|capture={closeDropdown}
+/>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <!-- svelte-ignore a11y-no-static-element-interactions -->
@@ -37,7 +79,7 @@
     {/if}
 
     <div class="dropdown-wrapper" bind:this={dropdownHead}>
-        <div class="trigger" class:expanded on:click={() => (expanded = !expanded)}>
+        <div class="trigger" class:expanded on:click={toggleExpanded}>
             <span class="val">{$spaceSeperatedNames ? convertToSpacedString(value) : value}</span>
             <svg class="chevron" class:expanded viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="6 9 12 15 18 9"></polyline>
@@ -45,7 +87,7 @@
         </div>
 
         {#if expanded}
-            <div class="options" transition:slide={{ duration: 300 }}>
+            <div class="options" style={optionsStyle} use:portal transition:slide={{ duration: 300 }}>
                 {#each options as o (o)}
                     <div
                         class="option"
@@ -127,17 +169,18 @@
   }
 
   .options {
-    position: absolute;
-    top: calc(100% + 4px);
-    right: 0;
-    min-width: 100%;
-    width: max-content;
+    --dropdown-scale: 1;
+
+    position: fixed;
+    box-sizing: border-box;
+    transform: scale(var(--dropdown-scale));
+    transform-origin: top left;
     background: var(--clickgui-window-background-color);
     border: 1px solid var(--clickgui-border-color);
     border-radius: 8px;
     padding: 4px;
-    z-index: 9999;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    z-index: 999999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     display: flex;
     flex-direction: column;
     gap: 4px;

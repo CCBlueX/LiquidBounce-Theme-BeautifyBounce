@@ -10,11 +10,15 @@
     export let name: string;
     export let icon: string | undefined;
     export let enabled: boolean;
+    // NOTE: It would be better if enabled state handling was performed by a wrapper element.
+    export let showEnabledState = true;
+    export let pointerCursor = true;
 
     let showingFallbackImage = false;
 
     function showFallbackIcon(event: Event) {
         const img = event.currentTarget as HTMLImageElement;
+
         showingFallbackImage = true;
         img.src = itemTextureUrl("minecraft:grass_block");
     }
@@ -22,20 +26,23 @@
 
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <!-- svelte-ignore a11y-click-events-have-key-events -->
-<div class="item" class:enabled on:click={() => dispatch("toggle", {enabled: !enabled, value:value})}>
+<div class="item" class:enabled class:pointer-cursor={pointerCursor}
+     on:click={() => dispatch("toggle", {enabled: !enabled, value: value})}>
 
     {#if icon}
         <img class="mc-icon" class:fallback={showingFallbackImage} src="{icon}" alt={value} on:error={showFallbackIcon}/>
     {/if}
 
-    <div class="check-icon">
-        {#if enabled}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-        {/if}
-    </div>
-    
+    {#if showEnabledState}
+        <div class="check-icon">
+            {#if enabled}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            {/if}
+        </div>
+    {/if}
+
     <div class="name">{name}</div>
 
 </div>
@@ -46,12 +53,15 @@
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    cursor: pointer;
     transition: background 0.4s ease;
     border-radius: 8px;
 
-    &:hover { 
-      background: var(--clickgui-window-background-color); 
+    &.pointer-cursor {
+      cursor: pointer;
+    }
+
+    &:hover {
+      background: var(--clickgui-window-background-color);
     }
   }
 
@@ -62,7 +72,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    
+
     svg {
       width: 14px;
       height: 14px;
@@ -76,9 +86,9 @@
     image-rendering: pixelated;
     flex-shrink: 0;
 
-    &.fallback { 
-      filter: grayscale(1); 
-      opacity: 0.4; 
+    &.fallback {
+      filter: grayscale(1);
+      opacity: 0.4;
     }
   }
 

@@ -7,13 +7,14 @@
     import {listen} from "../../../../../integration/ws";
     import {location} from "svelte-spa-router";
     import {quintOut} from "svelte/easing";
-    import {fade, slide} from "svelte/transition";
+    import {fade, slide, fly} from "svelte/transition";
     import type {Account} from "../../../../../integration/types";
     import Avatar from "./Avatar.svelte";
     import {notification} from "../notification_store";
     import RippleLoader from "../../RippleLoader.svelte";
     import {isLoggingIn} from "../../../altmanager/altmanager_store";
     import { getSavedTheme } from "../../../../../theme/clickgui_theme";
+    import {isAnniversary} from "../../../../../util/utils";
 
     let activeTheme = getSavedTheme();
     $: iconFilter = activeTheme === "light" ? "brightness(0)" : "none";
@@ -32,8 +33,8 @@
 
     $: renderedAccounts = accounts.filter(a => a.username.toLowerCase().includes(searchQuery.toLowerCase()) || searchQuery === "");
 
-    const inAccountManager = $location === "/altmanager";
-    const inTitle = $location === "/title";
+    $: inAccountManager = $location === "/altmanager";
+    $: inTitle = $location === "/title";
 
     async function refreshSession() {
         const session = await getSession();
@@ -101,6 +102,10 @@
                 <object data={avatar} type="image/png" class="avatar" aria-label="avatar" in:fade={{ duration: 200, delay: 200 }}>
                     <img src="img/steve.png" alt=avatar class="avatar">
                 </object>
+
+                {#if isAnniversary() && inTitle}
+                    <img transition:fly={{duration: 500, y: -10}} class="party-hat" src="img/anniversary/party-hat.svg" alt="party-hat">
+                {/if}
             </div>
         {/if}
         
@@ -188,6 +193,14 @@
         height: 44px;
         width: 44px;
         border-radius: 12px;
+      }
+
+      .party-hat {
+        position: absolute;
+        height: 84px;
+        top: -45px;
+        left: -25px;
+        transform: rotate(-30deg);
       }
     }
 

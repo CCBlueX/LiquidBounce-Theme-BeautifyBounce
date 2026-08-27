@@ -17,7 +17,6 @@
     import Changelog from "./Changelog.svelte";
     import { cubicIn, cubicOut } from "svelte/easing";
     import ClickGuiKeybinds from "./ClickGuiKeybinds.svelte";
-    import { push } from "svelte-spa-router";
     
     const ORDERED_CATEGORIES = [
         "Combat", 
@@ -308,17 +307,6 @@
                             <div class="settings-popup" bind:this={settingsPopupEl} transition:fade={{ duration: 300 }}>
                                 <div class="popup-title">Menu Settings</div>
 
-                                <button class="context-item" onclick={(e) => { 
-                                    e.stopPropagation(); 
-                                    settingsOpen = false;
-                                    push("/hudeditor"); 
-                                }}>
-                                    <div class="item-left">
-                                        <img src="img/clickgui/icon-style-theme.svg" alt="HUD Customization" style="filter: {iconFilter};" />
-                                        <span>HUD Customization</span>
-                                    </div>
-                                </button>
-                                
                                 <button class="context-item" onclick={(e) => { 
                                     e.stopPropagation(); 
                                     colorOpen = !colorOpen;

@@ -10,16 +10,18 @@
     export let gap: string = "4px";
     export let getRenderedStacks: (inventory: PlayerInventory) => ItemStack[];
 
+    let inventory: PlayerInventory | undefined;
     let stacks: ItemStack[] = [];
 
     listen("clientPlayerInventory", (data: ClientPlayerInventoryEvent) => {
-        stacks = getRenderedStacks(data.inventory);
+        inventory = data.inventory;
     });
 
     onMount(async () => {
-        const inventory = await getPlayerInventory();
-        stacks = getRenderedStacks(inventory);
+        inventory = await getPlayerInventory();
     });
+
+    $: stacks = inventory ? getRenderedStacks(inventory) : [];
 </script>
 
 <div class="inventory-container" style="gap: {gap}; --row-length: {rowLength};">

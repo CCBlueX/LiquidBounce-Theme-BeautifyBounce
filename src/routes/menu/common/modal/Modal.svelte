@@ -2,6 +2,7 @@
     import {fade, fly} from "svelte/transition";
     import {createEventDispatcher} from "svelte";
     import { backOut, backIn } from "svelte/easing";
+    import {portal} from "../../../../integration/util";
 
     export let title: string;
     export let visible: boolean;
@@ -15,7 +16,7 @@
 </script>
 
 {#if visible}
-    <div class="modal-wrapper" transition:fade|global={{duration: 200}}>
+    <div class="modal-wrapper" transition:fade|global={{duration: 200}} use:portal>
         <div class="modal" 
              in:fly|global={{duration: 400, y: 50, easing: backOut}} 
              out:fly|global={{duration: 300, y: 30, easing: backIn}}>

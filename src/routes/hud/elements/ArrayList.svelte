@@ -10,7 +10,7 @@
 
     export let settings: { [name: string]: any };
 
-    const cSettings = settings as HudArrayListSettings;
+    let cSettings = settings as HudArrayListSettings;
 
     let enabledModules: Module[] = [];
     let fontsReady = false;
@@ -51,6 +51,11 @@
         enabledModules = modulesWithWidths;
 
         await tick();
+    }
+
+    $: if (cSettings !== settings) {
+        cSettings = settings as HudArrayListSettings;
+        updateEnabledModules();
     }
 
     spaceSeperatedNames.subscribe(async () => {

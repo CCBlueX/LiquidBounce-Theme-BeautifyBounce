@@ -13,7 +13,6 @@
     import BottomButtonWrapper from "../common/buttons/BottomButtonWrapper.svelte";
     import OptionBar from "../common/optionbar/OptionBar.svelte";
     import MenuListItem from "../common/menulist/MenuListItem.svelte";
-    import Menu from "../common/Menu.svelte";
     import ButtonContainer from "../common/buttons/ButtonContainer.svelte";
     import MenuListItemTag from "../common/menulist/MenuListItemTag.svelte";
     import MenuList from "../common/menulist/MenuList.svelte";
@@ -174,6 +173,7 @@
 </script>
 
 <AddProxyModal bind:visible={addProxyModalVisible}/>
+
 {#if currentEditProxy}
     <EditProxyModal bind:visible={editProxyModalVisible} id={currentEditProxy.id}
                     host={currentEditProxy.host}
@@ -184,68 +184,67 @@
                     password={currentEditProxy.credentials?.password ?? ""}
                     requiresAuthentication={currentEditProxy.credentials !== undefined}/>
 {/if}
-<Menu>
-    <div class="compact-layout">
-        <OptionBar>
-            <Search on:search={handleSearch}/>
-        </OptionBar>
 
-        <MenuList sortable={false} on:sort={handleProxySort}>
-            {#each renderedProxies as proxy}
-                <MenuListItem
-                        image="img/flags/{(proxy.ipInfo?.country ?? 'unknown').toLowerCase()}.svg"
-                        title="{proxy.host}:{proxy.port}"
-                        favorite={proxy.favorite}
-                        on:dblclick={() => connectToProxy(proxy.id)}>
-                    <svelte:fragment slot="subtitle">
-                        <span class="subtitle">{proxy.ipInfo?.org ?? "Unknown"}</span>
-                    </svelte:fragment>
+<div class="compact-layout">
+    <OptionBar>
+        <Search on:search={handleSearch}/>
+    </OptionBar>
 
-                    <svelte:fragment slot="tag">
-                        <MenuListItemTag text={convertCountryCode(proxy.ipInfo?.country)}/>
-                        <MenuListItemTag text={proxy.type}/>
-                    </svelte:fragment>
+    <MenuList sortable={false} on:sort={handleProxySort}>
+        {#each renderedProxies as proxy}
+            <MenuListItem
+                    image="img/flags/{(proxy.ipInfo?.country ?? 'unknown').toLowerCase()}.svg"
+                    title="{proxy.host}:{proxy.port}"
+                    favorite={proxy.favorite}
+                    on:dblclick={() => connectToProxy(proxy.id)}>
+                <svelte:fragment slot="subtitle">
+                    <span class="subtitle">{proxy.ipInfo?.org ?? "Unknown"}</span>
+                </svelte:fragment>
 
-                    <svelte:fragment slot="active-visible">
-                        <MenuListItemButton title="Delete" icon="trash" on:click={() => removeProxy(proxy.id)}/>
-                        <MenuListItemButton title="Check" icon="check" on:click={() => checkProxy(proxy.id)}/>
-                        <MenuListItemButton title="Favorite" icon={proxy.favorite ? "favorite-filled" : "favorite" }
-                                            on:click={() => toggleFavorite(proxy.id, !proxy.favorite)}/>
-                        <MenuListItemButton title="Edit" icon="pen-2" on:click={() => editProxy(proxy)}/>
-                    </svelte:fragment>
+                <svelte:fragment slot="tag">
+                    <MenuListItemTag text={convertCountryCode(proxy.ipInfo?.country)}/>
+                    <MenuListItemTag text={proxy.type}/>
+                </svelte:fragment>
 
-                    <svelte:fragment slot="always-visible">
-                        <MenuListItemButton title="Connect" icon="play" on:click={() => connectToProxy(proxy.id)}/>
-                    </svelte:fragment>
-                </MenuListItem>
-            {/each}
-        </MenuList>
-    </div>
+                <svelte:fragment slot="active-visible">
+                    <MenuListItemButton title="Delete" icon="trash" on:click={() => removeProxy(proxy.id)}/>
+                    <MenuListItemButton title="Check" icon="check" on:click={() => checkProxy(proxy.id)}/>
+                    <MenuListItemButton title="Favorite" icon={proxy.favorite ? "favorite-filled" : "favorite" }
+                                        on:click={() => toggleFavorite(proxy.id, !proxy.favorite)}/>
+                    <MenuListItemButton title="Edit" icon="pen-2" on:click={() => editProxy(proxy)}/>
+                </svelte:fragment>
 
-    <BottomButtonWrapper>
-        <ButtonContainer>
-            <IconTextButton icon="icon-plus-circle.svg" title="Add" on:click={() => addProxyModalVisible = true}/>
-            <IconTextButton icon="icon-clipboard.svg" title="Add Clipboard" on:click={() => fromClipboard() } />
-            <IconTextButton icon="icon-random.svg" disabled={renderedProxies.length === 0} title="Random"
-                            on:click={connectToRandomProxy}/>
-            <IconTextButton icon="icon-disconnect.svg" disabled={!isConnectedToProxy} title="Disconnect"
-                            on:click={disconnectFromProxy}/>
-        </ButtonContainer>
+                <svelte:fragment slot="always-visible">
+                    <MenuListItemButton title="Connect" icon="play" on:click={() => connectToProxy(proxy.id)}/>
+                </svelte:fragment>
+            </MenuListItem>
+        {/each}
+    </MenuList>
+</div>
 
-        <ButtonContainer>
-            <IconTextButton icon="icon-back.svg" title="Back" on:click={() => deleteScreen()}/>
-        </ButtonContainer>
-    </BottomButtonWrapper>
-</Menu>
+<BottomButtonWrapper>
+    <ButtonContainer>
+        <IconTextButton icon="icon-plus-circle.svg" title="Add" on:click={() => addProxyModalVisible = true}/>
+        <IconTextButton icon="icon-clipboard.svg" title="Add Clipboard" on:click={() => fromClipboard() }/>
+        <IconTextButton icon="icon-random.svg" disabled={renderedProxies.length === 0} title="Random"
+                        on:click={connectToRandomProxy}/>
+        <IconTextButton icon="icon-disconnect.svg" disabled={!isConnectedToProxy} title="Disconnect"
+                        on:click={disconnectFromProxy}/>
+    </ButtonContainer>
+
+    <ButtonContainer>
+        <IconTextButton icon="icon-back.svg" title="Back" on:click={() => deleteScreen()}/>
+    </ButtonContainer>
+</BottomButtonWrapper>
 
 <style lang="scss">
-    .compact-layout {
-        max-width: 1000px;
-        width: 100%;
-        margin: 0 auto;
-        display: flex;
-        flex-direction: column;
-        flex: 1;
-        min-height: 0;
-    }
+  .compact-layout {
+    max-width: 1000px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
 </style>

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import Router, {push} from "svelte-spa-router";
+    import Router, {location, push} from "svelte-spa-router";
     import Hud from "./routes/hud/Hud.svelte";
     import {getMetadata, getTheme, getVirtualScreen} from "./integration/rest";
     import {cleanupListeners, listenAlways} from "./integration/ws";
@@ -18,18 +18,21 @@
     import TabbedClickGui from "./routes/clickgui/TabbedClickGui.svelte";
     import {intToRgba, rgbaToHex} from "./integration/util";
     import type {ThemeColorChangeEvent} from "./integration/events";
-    import HudEditor from "./routes/hudeditor/HudEditor.svelte";
+    import Menu from "./routes/menu/common/Menu.svelte";
+    import MenuContent from "./routes/menu/common/MenuContent.svelte";
 
-    const routes = {
-        "/clickgui": TabbedClickGui,
-        "/hudeditor": HudEditor,
-        "/hud": Hud,
-        "/inventory": Inventory,
-        "/title": Title,
+    const menuRoutes = {
         "/multiplayer": Multiplayer,
         "/altmanager": AltManager,
         "/singleplayer": Singleplayer,
         "/proxymanager": ProxyManager,
+    };
+
+    const routes = {
+        "/title": Title,
+        "/clickgui": TabbedClickGui,
+        "/hud": Hud,
+        "/inventory": Inventory,
         "/none": None,
         "/disconnected": Disconnected,
         "/browser": Browser
@@ -37,10 +40,18 @@
 
     const SURFACE_TINT_MIX = 18;
 
+    function isMenuRoute(route: string): boolean {
+        return route in menuRoutes;
+    }
+
     async function changeRoute(name: string) {
-        cleanupListeners();
+        const nextRoute = `/${name}`;
+        if (!isMenuRoute($location) || !isMenuRoute(nextRoute)) {
+            cleanupListeners();
+        }
+
         console.log(`[Router] Redirecting to ${name}`);
-        await push(`/${name}`);
+        await push(nextRoute);
     }
 
     function setThemeColor(name: string, value: string) {
@@ -143,5 +154,15 @@
 </script>
 
 <main>
-    <Router {routes}/>
+    {#if isMenuRoute($location)}
+        <Menu>
+            {#key $location}
+                <MenuContent>
+                    <Router routes={menuRoutes}/>
+                </MenuContent>
+            {/key}
+        </Menu>
+    {:else}
+        <Router {routes}/>
+    {/if}
 </main>
