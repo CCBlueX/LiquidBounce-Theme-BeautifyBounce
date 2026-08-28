@@ -38,7 +38,7 @@
     {:else if setting.valueType === "CHOOSE"}
         <ChooseSetting bind:setting={setting} on:change/>
     {:else if setting.valueType === "MULTI_CHOOSE"}
-        <MultiChooseSetting {path} bind:setting={setting} on:change/>
+        <MultiChooseSetting bind:setting={setting} on:change/>
     {:else if setting.valueType === "TOGGLEABLE"}
         <TogglableSetting {path} bind:setting={setting} on:change/>
     {:else if setting.valueType === "INT"}
