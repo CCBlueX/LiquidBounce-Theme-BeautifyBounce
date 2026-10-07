@@ -28,7 +28,7 @@
   }
 
   .buttons {
-    margin-left: 50px;
+    margin-left: 80px;
   }
 
   @media screen and (max-width: 1366px) {
