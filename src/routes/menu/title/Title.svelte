@@ -6,7 +6,7 @@
     import Account from "../common/header/account/Account.svelte";
     import Notifications from "../common/header/Notifications.svelte";
     import {
-        browse, exitClient, getClientUpdate, openScreen
+        browse, exitClient, getClientUpdate, openScreen, toggleBasicMode
     } from "../../../integration/rest";
     import { fly, fade } from "svelte/transition";
     import { backIn, backOut } from "svelte/easing";
@@ -151,6 +151,14 @@
             </nav>
 
             <div class="panel-bottom">
+                <button class="basic-mode-btn" on:click={toggleBasicMode}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    Basic Mode
+                </button>
                 <button class="exit-btn" on:click={exitClient}>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                          stroke-linecap="round" stroke-linejoin="round">
@@ -301,9 +309,12 @@
 
     .panel-bottom {
         margin-top: 40px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
     }
 
-    .exit-btn {
+    .exit-btn, .basic-mode-btn {
         display: flex;
         justify-self: center;
         gap: 10px;
@@ -325,9 +336,14 @@
         }
 
         &:hover {
-            background: rgba(220, 50, 50, 0.12);
-            color: #ff6b6b;
+            background: color-mix(in srgb, var(--accent-color) 40%, transparent);
+            color: var(--clickgui-text-color);
         }
+    }
+
+    .exit-btn:hover {
+        background: rgba(220, 50, 50, 0.12);
+        color: #ff6b6b;
     }
 
     .top-right {
