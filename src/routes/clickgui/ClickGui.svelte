@@ -2,7 +2,7 @@
     import { onMount, onDestroy, tick } from "svelte";
     import { fade } from "svelte/transition";
     import type { GroupedModules, Module } from "../../integration/types";
-    import { getModules, setTyping } from "../../integration/rest";
+    import { getCategories, getModules, setTyping } from "../../integration/rest";
     import { groupByCategory } from "../../integration/util";
     import { listen } from "../../integration/ws";
     import type { ModuleToggleEvent, VirtualScreenEvent } from "../../integration/events";
@@ -38,6 +38,7 @@
     let modules = $state<Module[]>([]);
     let categories = $state<GroupedModules>({});
     let categoryNames = $state<string[]>([]);
+    let icons = $state<Record<string, string>>({});
     
     let activeCategory = $state<string>("");
     let searchQuery = $state<string>("");
@@ -101,6 +102,12 @@
             activeCategory = categoryNames[0];
         }
 
+        icons = Object.fromEntries(
+            (await getCategories())
+                .filter(category => category.icon)
+                .map(category => [category.name, category.icon!])
+        );
+
         await tick();
     });
 
@@ -159,7 +166,11 @@
 
     function setCategory(cat: string) {
         activeCategory = cat;
-        searchQuery = ""; 
+        searchQuery = "";
+    }
+
+    function showFallbackIcon(event: Event) {
+        (event.currentTarget as HTMLImageElement).src = "img/clickgui/icon-client.svg";
     }
 
     const themes: Record<ThemeName, { label: string; surface: string; text: string }> = {
@@ -290,7 +301,7 @@
                         {#each categoryNames as cat}
                             <button class="category-btn" class:active={activeCategory === cat && !searchQuery} onclick={() => setCategory(cat)}>
                                 <ClickGuiToolTip text={cat} placement="left" />
-                                <img class="icon" src="img/clickgui/icon-{cat.toLowerCase()}.svg" alt={cat} style="filter: {iconFilter};" />
+                                <img class="icon" src={icons[cat] ?? `img/clickgui/icon-${cat.toLowerCase()}.svg`} alt={cat} style="filter: {iconFilter};" onerror={showFallbackIcon} />
                             </button>
                         {/each}
                     </nav>
@@ -390,8 +401,6 @@
                                     placeholder="Search modules..." 
                                     bind:value={searchQuery}
                                     bind:this={searchInputEl}
-                                    onfocusin={async () => await setTyping(true)}
-                                    onfocusout={async () => await setTyping(false)}
                                     onkeydown={async (e) => {
                                         if (e.key === "Escape") {
                                             searchQuery = "";

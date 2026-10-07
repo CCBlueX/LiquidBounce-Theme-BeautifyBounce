@@ -8,13 +8,27 @@
     export let elementCount = -1;
 
     let sortableElement: HTMLElement | undefined;
+    let remountKey = 0;
 
-    interface MenuListSortEvent { newOrder: number[] }
+    interface MenuListSortEvent {
+        newOrder: number[];
+        complete: () => void;
+    }
 
     const dispatch = createEventDispatcher<{ sort: MenuListSortEvent }>();
 
     function handleChange(e: any) {
-        dispatch("sort", { newOrder: calculateNewOrder(e.oldIndex, e.newIndex, elementCount) });
+        let completed = false;
+
+        dispatch("sort", {
+            newOrder: calculateNewOrder(e.oldIndex, e.newIndex, elementCount),
+            complete: () => {
+                if (!completed) {
+                    completed = true;
+                    remountKey++;
+                }
+            }
+        });
     }
 
     function calculateNewOrder(oldIndex: number, newIndex: number, length: number): number[] {
@@ -26,15 +40,17 @@
 </script>
 
 <div class="menu-list" transition:fly|global={{duration: 700, x: 1000}}>
-    {#if sortable && elementCount > -1}
-        <SortableList class="menu-list-items" onSort={handleChange} forceFallback={true} animation={150}>
-            <slot/>
-        </SortableList>
-    {:else}
-        <div class="menu-list-items">
-            <slot/>
-        </div>
-    {/if}
+    {#key remountKey}
+        {#if sortable && elementCount > -1}
+            <SortableList class="menu-list-items" onSort={handleChange} forceFallback={true} animation={150}>
+                <slot/>
+            </SortableList>
+        {:else}
+            <div class="menu-list-items">
+                <slot/>
+            </div>
+        {/if}
+    {/key}
 </div>
 
 <style lang="scss">

@@ -15,15 +15,34 @@
     let apiSlider: API;
 
     onMount(() => {
+        // The value can sit outside the declared range (e.g. set through the `.value` command),
+        // so widen the slider instead of letting noUiSlider clamp it away.
+        const min = Math.min(cSetting.range.from, cSetting.value.from, cSetting.value.to);
+        const max = Math.max(cSetting.range.to, cSetting.value.from, cSetting.value.to);
+
+        // Coarsen the step by however much the track had to grow, so an outlier in
+        // either direction does not get an absurdly fine step. Reduces to
+        // `cSetting.range.to` whenever the value is within its declared range.
+        const grownBy = (max - min) - (cSetting.range.to - cSetting.range.from);
+        const stepBasis = cSetting.range.to + grownBy;
+
         let step = 0.01;
-        if (cSetting.range.to > 100) step = 0.1;
-        else if (cSetting.range.to <= 0.1) step = 0.0001;
-        else if (cSetting.range.to <= 1.0) step = 0.001;
+
+        if (stepBasis > 100) {
+            step = 0.1;
+        } else if (stepBasis <= 0.1) {
+            step = 0.0001;
+        } else if (stepBasis <= 1.0) {
+            step = 0.001;
+        }
 
         apiSlider = noUiSlider.create(slider, {
             start: [cSetting.value.from, cSetting.value.to],
             connect: true,
-            range: { min: cSetting.range.from, max: cSetting.range.to },
+            range: {
+                min,
+                max,
+            },
             step: step,
             format: {
                 to: (value) => parseFloat(value.toFixed(4)),
