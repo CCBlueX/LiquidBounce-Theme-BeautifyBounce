@@ -134,7 +134,7 @@
             {/if}
 
             {#if hasSettings}
-                <div class="expand-btn" class:rotated={expanded}>
+                <div class="expand-btn" class:rotated={expanded} on:click|stopPropagation={toggleExpanded}>
                     <img src="img/clickgui/icon-settings-expand.svg" alt="Expand" />
                 </div>
             {/if}
