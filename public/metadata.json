@@ -49,10 +49,10 @@
     "BedTracker"
   ],
   "fonts": [
-    "SF-Pro-Text-Bold.ttf",
-    "SF-Pro-Text-Light.ttf",
-    "SF-Pro-Text-Medium.ttf",
-    "SF-Pro-Text-Regular.ttf"
+    "SF/SF-Pro-Text-Bold.otf",
+    "SF/SF-Pro-Text-Light.otf",
+    "SF/SF-Pro-Text-Medium.otf",
+    "SF/SF-Pro-Text-Regular.otf"
   ],
   "backgrounds": [
     {
