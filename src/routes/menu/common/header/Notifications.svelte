@@ -1,7 +1,7 @@
 <script lang="ts">
     import {fly} from "svelte/transition";
     import {notification, type TNotification} from "./notification_store";
-    import {onMount} from "svelte";
+    import {onDestroy, onMount} from "svelte";
 
     interface NotificationWithId {
         notification: TNotification;
@@ -14,15 +14,19 @@
        notifications = [];
     });
 
-    notification.subscribe((v) => {
-        if (!v) return;
+    function isShown(v: TNotification) {
+        return notifications.some(n => n.notification.title === v.title && n.notification.message === v.message);
+    }
+
+    onDestroy(notification.subscribe((v) => {
+        if (!v || isShown(v)) return;
         const id = Date.now();
         const n = { notification: v, id };
         notifications = [...notifications, n];
         setTimeout(() => {
             notifications = notifications.filter(n => n.id !== id);
         }, (v?.delay ?? 3) * 1000);
-    });
+    }));
 </script>
 
 <div class="notifications">
