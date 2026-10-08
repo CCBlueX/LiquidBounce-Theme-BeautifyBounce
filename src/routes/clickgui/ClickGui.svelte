@@ -401,13 +401,6 @@
                                     placeholder="Search modules..." 
                                     bind:value={searchQuery}
                                     bind:this={searchInputEl}
-                                    onkeydown={async (e) => {
-                                        if (e.key === "Escape") {
-                                            searchQuery = "";
-                                            searchOpen = false;
-                                            await setTyping(false);
-                                        }
-                                    }}
                                     spellcheck="false"
                                 />
                             </div>
