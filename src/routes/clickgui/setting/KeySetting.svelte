@@ -39,7 +39,7 @@
     listen("keyboardKey", async (e: KeyboardKeyEvent) => {
         if (!isClickGuiScreen(e.screen) || !binding) return;
         binding = false;
-        cSetting.value = e.keyCode !== 256 ? e.key : UNKNOWN_KEY;
+        cSetting.value = e.keyCode !== 27 /* SDLK_ESCAPE */ ? e.key : UNKNOWN_KEY;
         setting = { ...cSetting };
         dispatch("change");
     });
@@ -48,7 +48,7 @@
         if (
             !isClickGuiScreen(e.screen) ||
             !binding ||
-            (e.button === 0 && isHovered)
+            (e.button === 1 /* SDL_BUTTON_LEFT */ && isHovered)
         )
             return;
         binding = false;

@@ -187,12 +187,13 @@
         background-color: var(--clickgui-base-color);
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         flex-shrink: 0;
-        
+
+        // Face is the 8x8 square at (8, 8) of a 64-wide skin, at whatever resolution the texture has.
         img {
             position: absolute;
-            scale: 5.5;
-            left: 100px;
-            top: 100px;
+            width: 800%;
+            left: -100%;
+            top: -100%;
             image-rendering: pixelated;
         }
     }
