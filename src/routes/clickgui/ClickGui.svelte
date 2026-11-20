@@ -466,7 +466,8 @@
         gap: 10px;
         width: 100%;
         max-width: 1200px;
-        height: 800px;
+        // Leaves room for the tab bar above
+        height: min(800px, calc(100vh - 160px));
     }
 
     .window {
@@ -493,6 +494,7 @@
     .sidebar-top {
         display: flex;
         flex-direction: column;
+        min-height: 0;
     }
 
     .sidebar-bottom {
@@ -637,6 +639,7 @@
         align-items: center;
         gap: 10px;
         overflow-y: auto;
+        scrollbar-width: none;
     }
 
     .category-btn {
@@ -644,6 +647,7 @@
         border-radius: 14px;
         padding: 14px 14px;
         display: flex;
+        flex-shrink: 0;
         cursor: pointer;
         border: 1px solid transparent;
         transition: all 0.4s ease;
