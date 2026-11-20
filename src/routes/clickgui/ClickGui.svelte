@@ -15,6 +15,7 @@
     import ColorManager from "./ColorManager.svelte";
     import ClickGuiToolTip from "./ClickGuiToolTip.svelte";
     import Changelog from "./Changelog.svelte";
+    import GlobalSettings from "./GlobalSettings.svelte";
     import { cubicIn, cubicOut } from "svelte/easing";
     import ClickGuiKeybinds from "./ClickGuiKeybinds.svelte";
     
@@ -304,6 +305,12 @@
                                 <img class="icon" src={icons[cat] ?? `img/clickgui/icon-${cat.toLowerCase()}.svg`} alt={cat} style="filter: {iconFilter};" onerror={showFallbackIcon} />
                             </button>
                         {/each}
+                        {#if categoryNames.length > 0}
+                            <button class="category-btn" class:active={activeCategory === "Settings" && !searchQuery} onclick={() => setCategory("Settings")}>
+                                <ClickGuiToolTip text="Settings" placement="left" />
+                                <img class="icon" src="img/clickgui/icon-client.svg" alt="Settings" style="filter: {iconFilter};" />
+                            </button>
+                        {/if}
                     </nav>
                 </div>
 
@@ -375,7 +382,7 @@
             <main class="main-content">
                 <header class="top-bar" onmousedown={handleMouseDown}>
                     <div class="header-info">
-                        <h1 class="page-title">{searchQuery ? 'Search Results' : (activeCategory === "Changelog" ? "Changelog" : "")}</h1>
+                        <h1 class="page-title">{searchQuery ? 'Search Results' : (activeCategory === "Changelog" || activeCategory === "Settings" ? activeCategory : "")}</h1>
                         {#if activeCategory !== "Changelog" && !searchQuery}
                             <div class="config-dropdown-wrapper">
                                 <button class="config-trigger" bind:this={configBtnEl} onclick={() => configOpen = !configOpen} class:active={configOpen}>
@@ -415,6 +422,11 @@
 
                 {#if activeCategory === "Changelog"}
                 <Changelog />
+
+                {:else if activeCategory === "Settings" && !searchQuery}
+                <div class="global-settings" use:smoothScroll>
+                    <GlobalSettings />
+                </div>
 
                 {:else}
                 <div class="modules-grid" use:smoothScroll={activeCategory + searchQuery}>
@@ -776,6 +788,29 @@
     @keyframes search-collapse {
         from { opacity: 0; width: 240px; }
         to   { opacity: 1; width: 40px; }
+    }
+
+    .global-settings {
+        flex: 1;
+        margin: 20px;
+        overflow-y: auto;
+        border-radius: 14px;
+        background: var(--clickgui-base-color);
+        display: flex;
+        flex-direction: column;
+
+        :global(.settings) {
+            flex: 1 0 auto;
+        }
+
+        &::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        &::-webkit-scrollbar-thumb {
+            background: var(--accent-color);
+            border-radius: 8px;
+        }
     }
 
     .modules-grid {

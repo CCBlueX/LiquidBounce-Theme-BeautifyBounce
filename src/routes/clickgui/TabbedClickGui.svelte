@@ -1,6 +1,5 @@
 <script lang="ts">
     import ClickGui from "./ClickGui.svelte";
-    import GlobalSettings from "./tabs/GlobalSettings.svelte";
     import Tabs from "./tabs/Tabs.svelte";
     import {gridSize, os, scaleFactor, snappingEnabled, darken} from "./clickgui_store";
     import type {ConfigurableSetting, TogglableSetting} from "../../integration/types";
@@ -24,7 +23,6 @@
     const tabs = [
         {title: "ClickGUI", content: ClickGui},
         {title: "HUD Editor", content: HudEditor},
-        {title: "Settings", content: GlobalSettings},
     ];
 
     let activeTab = $state(0);
