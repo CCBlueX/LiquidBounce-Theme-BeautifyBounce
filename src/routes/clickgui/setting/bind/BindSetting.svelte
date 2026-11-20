@@ -7,6 +7,7 @@
     import BindDisplay from "./BindDisplay.svelte";
     import SwitchBindAction from "./SwitchBindAction.svelte";
     import {isClickGuiScreen, UNKNOWN_KEY} from "../../../../util/utils";
+    import {escapeLayer} from "../../../../integration/escape";
 
     /**
      * SDL keycodes of the modifier keys (see org.lwjgl.sdl.SDLKeycode)
@@ -117,6 +118,9 @@
         hidden = set.has(moduleName);
         window.dispatchEvent(new Event("keybinds-hidden-change"));
     }
+
+    const layer = escapeLayer(() => handleActionChange(UNKNOWN_KEY));
+    $: layer.setOpen(binding);
 </script>
 
 <div class="setting-row">

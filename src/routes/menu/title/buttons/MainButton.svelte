@@ -15,7 +15,7 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 <!-- svelte-ignore a11y-click-events-have-key-events -->
 <div class="main-button"
-     on:mouseenter={() => hovered = true}
+     on:mouseenter={() => { hovered = true; dispatch("mouseenter"); }}
      on:mouseleave={() => hovered = false}
      on:click={() => { hovered = false; dispatch("click"); }}
      out:fly|global={{ x: -40, opacity: 0, duration: 280, delay: index * 40, easing: backIn }}

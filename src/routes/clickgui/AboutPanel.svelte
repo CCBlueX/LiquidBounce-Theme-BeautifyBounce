@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { fade } from "svelte/transition";
-    import { getClientInfo, getSession, browse } from "../../integration/rest";
+    import { getClientInfo, getSession, openLink } from "../../integration/rest";
     import type { ClientInfo, Session } from "../../integration/types";
 
     export let onClose: () => void;
@@ -65,7 +65,7 @@
         <div class="section-label">Links</div>
         <div class="socials-row">
             {#each socials as s}
-                <button class="social-btn" onclick={() => browse(s.target)} title={s.label}>
+                <button class="social-btn" onclick={() => openLink(s.target)} title={s.label}>
                     <img src="img/menu/icon-{s.icon}.svg" alt={s.label} style="filter: {iconFilter};" />
                 </button>
             {/each}

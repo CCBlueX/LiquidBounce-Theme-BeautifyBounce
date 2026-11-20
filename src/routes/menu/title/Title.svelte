@@ -6,7 +6,7 @@
     import Account from "../common/header/account/Account.svelte";
     import Notifications from "../common/header/Notifications.svelte";
     import {
-        browse, exitClient, getClientUpdate, openScreen, toggleBasicMode
+        openLink, exitClient, getClientUpdate, openScreen, toggleBasicMode
     } from "../../../integration/rest";
     import { fly, fade } from "svelte/transition";
     import { backIn, backOut } from "svelte/easing";
@@ -15,6 +15,8 @@
     import LiquidBounceLogo from "../../../components/LiquidBounceLogo.svelte";
     import ConfettiBackground from "./ConfettiBackground.svelte";
     import { isAnniversary } from "../../../util/utils";
+    import { escapeLayer } from "../../../integration/escape";
+    import { prefetchServers } from "../multiplayer/server_store";
 
     let regularButtonsShown = true;
     let clientButtonsShown = false;
@@ -95,6 +97,9 @@
             setTimeout(() => { clientButtonsShown = true; }, 400);
         }
     }
+
+    const layer = escapeLayer(toggleButtons);
+    $: layer.setOpen(clientButtonsShown);
 </script>
 
 <div class="title-screen" on:mousemove={onMouseMove}>
@@ -135,6 +140,7 @@
                     <MainButton title="Singleplayer" icon="singleplayer" index={0}
                                 on:click={() => openScreen("singleplayer")}/>
                     <MainButton title="Multiplayer"  icon="multiplayer"  index={1}
+                                on:mouseenter={prefetchServers}
                                 on:click={() => openScreen("multiplayer")}/>
                     <MainButton title="LiquidBounce" icon="liquidbounce" index={2}
                                 on:click={toggleButtons}/>
@@ -179,13 +185,13 @@
 
         <div class="social-bar" in:fly={{ y: 40, duration: 600, easing: backOut }}>
             <ButtonContainer>
-                <IconButton title="Forum"   icon="nodebb"   on:click={() => browse("MAINTAINER_FORUM")}/>
-                <IconButton title="GitHub"  icon="github"   on:click={() => browse("MAINTAINER_GITHUB")}/>
-                <IconButton title="Discord" icon="discord"  on:click={() => browse("MAINTAINER_DISCORD")}/>
-                <IconButton title="Twitter" icon="twitter"  on:click={() => browse("MAINTAINER_TWITTER")}/>
-                <IconButton title="YouTube" icon="youtube"  on:click={() => browse("MAINTAINER_YOUTUBE")}/>
+                <IconButton title="Forum"   icon="nodebb"   on:click={() => openLink("MAINTAINER_FORUM")}/>
+                <IconButton title="GitHub"  icon="github"   on:click={() => openLink("MAINTAINER_GITHUB")}/>
+                <IconButton title="Discord" icon="discord"  on:click={() => openLink("MAINTAINER_DISCORD")}/>
+                <IconButton title="Twitter" icon="twitter"  on:click={() => openLink("MAINTAINER_TWITTER")}/>
+                <IconButton title="YouTube" icon="youtube"  on:click={() => openLink("MAINTAINER_YOUTUBE")}/>
                 <IconTextButton title="liquidbounce.net" icon="icon-liquidbounce.net.svg"
-                                on:click={() => browse("CLIENT_WEBSITE")}/>
+                                on:click={() => openLink("CLIENT_WEBSITE")}/>
             </ButtonContainer>
         </div>
     {/if}

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { fade, slide } from "svelte/transition";
-    import { browse } from "../../integration/rest";
+    import { openLink } from "../../integration/rest";
     import { quintOut } from "svelte/easing";
 
     interface Release {

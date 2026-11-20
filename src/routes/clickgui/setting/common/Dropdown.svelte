@@ -2,6 +2,7 @@
     import {createEventDispatcher, tick} from "svelte";
     import {slide} from "svelte/transition";
     import {convertToSpacedString, spaceSeperatedNames} from "../../../../theme/theme_config";
+    import {escapeLayer} from "../../../../integration/escape";
 
     export let name: string | null;
     export let options: string[];
@@ -61,6 +62,9 @@
     function closeDropdown() {
         expanded = false;
     }
+
+    const layer = escapeLayer(closeDropdown);
+    $: layer.setOpen(expanded);
 </script>
 
 <svelte:window

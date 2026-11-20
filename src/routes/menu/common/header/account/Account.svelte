@@ -6,8 +6,7 @@
     import {onMount} from "svelte";
     import {listen} from "../../../../../integration/ws";
     import {location} from "svelte-spa-router";
-    import {quintOut} from "svelte/easing";
-    import {fade, slide, fly} from "svelte/transition";
+    import {fade, fly, slide} from "svelte/transition";
     import type {Account} from "../../../../../integration/types";
     import Avatar from "./Avatar.svelte";
     import {notification} from "../notification_store";
@@ -15,6 +14,7 @@
     import {isLoggingIn} from "../../../altmanager/altmanager_store";
     import { getSavedTheme } from "../../../../../theme/clickgui_theme";
     import {isAnniversary} from "../../../../../util/utils";
+    import {escapeLayer} from "../../../../../integration/escape";
 
     let activeTheme = getSavedTheme();
     $: iconFilter = activeTheme === "light" ? "brightness(0)" : "none";
@@ -76,6 +76,12 @@
         }
     }
 
+    const layer = escapeLayer(() => {
+        expanded = false;
+        searchQuery = "";
+    });
+    $: layer.setOpen(expanded);
+
     async function login(account: Account) {
         notification.set({ title: "AltManager", message: "Logging in...", error: false });
         await loginToAccount(account.id);
@@ -99,12 +105,12 @@
             </div>
         {:else}
             <div class="avatar-wrapper">
-                <object data={avatar} type="image/png" class="avatar" aria-label="avatar" in:fade={{ duration: 200, delay: 200 }}>
+                <object data={avatar} type="image/png" class="avatar" aria-label="avatar" in:fade={{ duration: 140 }}>
                     <img src="img/steve.png" alt=avatar class="avatar">
                 </object>
 
                 {#if isAnniversary() && inTitle}
-                    <img transition:fly={{duration: 500, y: -10}} class="party-hat" src="img/anniversary/party-hat.svg" alt="party-hat">
+                    <img transition:fly={{duration: 180, y: -10}} class="party-hat" src="img/anniversary/party-hat.svg" alt="party-hat">
                 {/if}
             </div>
         {/if}
@@ -134,7 +140,7 @@
     </div>
 
     {#if expanded}
-        <div class="quick-switcher" transition:fade|global={{ duration: 200, easing: quintOut }}>
+        <div class="quick-switcher" transition:fade|global={{ duration: 140 }}>
             <!-- svelte-ignore a11y_autofocus -->
             <input type="text" autofocus class="account-search" placeholder="Search accounts..." bind:value={searchQuery}>
 
@@ -143,7 +149,7 @@
                     <div class="account-list">
                         {#each renderedAccounts as a}
                             <div on:click={() => login(a)} class="account-item"
-                                 transition:slide|global={{ duration: 200, easing: quintOut }}
+                                 transition:slide|global={{ duration: 140 }}
                                  class:active={a.username === username}>
                                 <Avatar url={a.avatar}/>
                                 <div class="account-info">
