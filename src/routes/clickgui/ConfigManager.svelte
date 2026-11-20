@@ -174,6 +174,10 @@
                         if (Array.isArray(targetItem.value) && Array.isArray(sourceItem.value)) {
                             if (sourceItem.value.length > 0 && typeof sourceItem.value[0] === "object" && "name" in sourceItem.value[0]) {
                                 deepMergeSettings(targetItem.value, sourceItem.value);
+                                // Configs without MillisecondDelays hold InventoryConstraints delays in ticks, the client converts them only without valueType
+                                if (!sourceItem.valueType && !sourceItem.value.some((v: any) => v?.name === "MillisecondDelays")) {
+                                    delete targetItem.valueType;
+                                }
                             } else {
                                 targetItem.value = sourceItem.value;
                             }
