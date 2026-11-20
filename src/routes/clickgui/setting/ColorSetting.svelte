@@ -22,8 +22,8 @@
     let hex = rgbaToHex(intToRgba(cSetting.value));
     $: opacityPercent = Math.round((intToRgba(cSetting.value)[3] / 255) * 100);
 
-    const layer = escapeLayer(() => hidden = true);
-    $: layer.setOpen(!hidden);
+    const layer = escapeLayer(() => modalOpen = false);
+    $: layer.setOpen(modalOpen);
 
     onMount(() => {
         pickr = Pickr.create({
