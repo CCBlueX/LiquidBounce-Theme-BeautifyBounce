@@ -134,6 +134,8 @@
     width: 18px;
     height: 18px;
     border-radius: 6px;
+    // Keeps fully transparent colors visible
+    outline: 1px solid color-mix(in srgb, var(--clickgui-text-color) 20%, transparent);
     cursor: pointer;
     transition: transform 0.4s ease, box-shadow 0.4s ease;
 
